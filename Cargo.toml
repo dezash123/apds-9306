@@ -1,0 +1,23 @@
+[package]
+name = "apds9306"
+version = "0.1.0"
+edition = "2021"
+authors = ["Desmond Mehta"]
+description = "Async embedded-hal driver for APDS-9306/APDS-9306-065 Digital Ambient Light Sensor"
+repository = "https://github.com/dezash123/apds-9306.git"
+license = "MIT OR Apache-2.0"
+keywords = ["embedded-hal-driver", "ambient-light", "sensor", "i2c", "async"]
+categories = ["embedded", "hardware-support", "no-std"]
+
+[dependencies]
+embedded-hal = "1.0.0"
+embedded-hal-async = "1.0.0"
+defmt = { version = "0.3", optional = true }
+
+[features]
+default = []
+defmt = ["dep:defmt"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
