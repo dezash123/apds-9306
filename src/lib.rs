@@ -64,8 +64,11 @@ pub use types::*;
 
 use embedded_hal_async::i2c::I2c;
 
+/// APDS-9306 type (APDS-9306 or APDS-9306-065)
 pub enum Apds9306Type {
+    /// APDS-9306
     Apds9306,
+    /// APDS-9306-065
     Apds9306_065,
 }
 
@@ -95,10 +98,10 @@ impl<E> From<E> for Error<E> {
 pub struct Apds9306<I2C> {
     /// I2C interface
     i2c: I2C,
-    /// Current ALS configuration
-    config: Config,
+    /// Current configuration
+    pub config: Config,
     /// Current interrupt configuration
-    interrupt_config: InterruptConfig,
+    pub interrupt_config: InterruptConfig,
 }
 
 impl<I2C, E> Apds9306<I2C>
@@ -157,7 +160,7 @@ where
         // read current value
         let current = self.read_register(Register::MainCtrl).await?;
         
-        // set ALS_EN bit (bit 1)
+        // set EN bit (bit 1)
         let value = current | register::main_ctrl::EN;
         self.write_register(Register::MainCtrl, value).await?;
         
@@ -169,7 +172,7 @@ where
         // read current value
         let current = self.read_register(Register::MainCtrl).await?;
         
-        // clear ALS_EN bit (bit 1)
+        // clear EN bit (bit 1)
         let value = current & !register::main_ctrl::EN;
         self.write_register(Register::MainCtrl, value).await?;
         
@@ -224,15 +227,17 @@ where
         
         Ok(())
     }
+
+    /// Parses the data from the buffer, 3 bytes -> 20-bit value
+    fn parse_data(buffer: &[u8]) -> u32 {
+        (buffer[0] as u32) | ((buffer[1] as u32) << 8) | ((buffer[2] as u32 & 0x0F) << 16)
+    }
     
     /// Reads the ALS data
-    pub async fn read_data(&mut self) -> Result<u32, Error<E>> {
+    pub async fn read_als_data(&mut self) -> Result<u32, Error<E>> {
         let mut buffer = [0u8; 3];
-        self.read_registers(Register::Data0, &mut buffer).await?;
-        
-        // combine the 3 bytes into a 20-bit value
-        let als_data = (buffer[0] as u32) | ((buffer[1] as u32) << 8) | ((buffer[2] as u32 & 0x0F) << 16);
-        
+        self.read_registers(Register::AlsData0, &mut buffer).await?;
+        let als_data = Self::parse_data(&buffer);
         Ok(als_data)
     }
     
@@ -240,18 +245,19 @@ where
     pub async fn read_clear_data(&mut self) -> Result<u32, Error<E>> {
         let mut buffer = [0u8; 3];
         self.read_registers(Register::ClearData0, &mut buffer).await?;
-        
-        // combine the 3 bytes into a 20-bit value
-        let clear_data = (buffer[0] as u32) | ((buffer[1] as u32) << 8) | ((buffer[2] as u32 & 0x0F) << 16);
-        
+        let clear_data = Self::parse_data(&buffer);
         Ok(clear_data)
     }
     
     /// Reads both ALS and Clear data in a single operation
     pub async fn read_measurement_data(&mut self) -> Result<MeasurementData, Error<E>> {
+        let mut buffer = [0u8; 6];
+        self.read_registers(Register::AlsData0, &mut buffer).await?;
+        let als_data = Self::parse_data(&buffer[0..3]);
+        let clear_data = Self::parse_data(&buffer[3..6]);
         Ok(MeasurementData {
-            als: self.read_data().await?,
-            clear: self.read_clear_data().await?,
+            als: als_data,
+            clear: clear_data,
         })
     }
     
@@ -277,26 +283,16 @@ where
         Ok((status & register::main_status::POWER_ON_STATUS) != 0)
     }
     
-    /// Checks if ALS interrupt is triggered
+    /// Checks if interrupt is triggered
     pub async fn is_interrupt(&mut self) -> Result<bool, Error<E>> {
         let status = self.read_status().await?;
         Ok((status & register::main_status::INT_STATUS) != 0)
     }
     
-    /// Checks if new ALS data is available
+    /// Checks if new data is available
     pub async fn is_data_ready(&mut self) -> Result<bool, Error<E>> {
         let status = self.read_status().await?;
         Ok((status & register::main_status::DATA_STATUS) != 0)
-    }
-    
-    /// Gets the current ALS configuration
-    pub fn get_config(&self) -> Config {
-        self.config
-    }
-    
-    /// Gets the current interrupt configuration
-    pub fn get_interrupt_config(&self) -> InterruptConfig {
-        self.interrupt_config
     }
     
     /// Reads a single register

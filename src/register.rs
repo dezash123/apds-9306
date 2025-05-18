@@ -18,12 +18,12 @@ pub enum Register {
     ClearData1 = 0x0B,
     /// Clear ADC data MSB register
     ClearData2 = 0x0C,
-    /// ADC data LSB register
-    Data0 = 0x0D,
-    /// ADC data middle byte register
-    Data1 = 0x0E,
-    /// ADC data MSB register
-    Data2 = 0x0F,
+    /// ALS ADC data LSB register
+    AlsData0 = 0x0D,
+    /// ALS ADC data middle byte register
+    AlsData1 = 0x0E,
+    /// ALS ADC data MSB register
+    AlsData2 = 0x0F,
     /// Interrupt configuration register
     IntCfg = 0x19,
     /// Interrupt persistence register
